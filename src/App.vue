@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { days, weatherLinks } from "./data";
 
 const page = ref("trip");
@@ -35,7 +35,8 @@ const form = ref({
   payer: "共同",
 });
 const nav = [
-  ["trip", "行程"],
+  ["home", "首頁"],
+  ["itinerary", "行程"],
   ["budget", "預算"],
   ["checklist", "清單"],
   ["weather", "天氣"],
@@ -67,9 +68,24 @@ const progress = computed(() =>
 );
 const checked = computed(() => checklist.value.filter((i) => i.done).length);
 
-function goto(name) {
-  page.value = name;
+async function goto(name) {
   menuOpen.value = false;
+  if (name === "home") {
+    page.value = "trip";
+    await nextTick();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  if (name === "itinerary") {
+    page.value = "trip";
+    await nextTick();
+    document.querySelector("#itinerary")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+    return;
+  }
+  page.value = name;
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function addExpense() {
@@ -105,7 +121,7 @@ function money(value) {
 
 <template>
   <header class="topbar">
-    <button class="brand" @click="goto('trip')">
+    <button class="brand" @click="goto('home')">
       <span>Trip．Note</span><b>AU · CZ · HU</b>
     </button>
     <button class="menu" @click="menuOpen = !menuOpen" aria-label="開啟選單">
@@ -157,7 +173,7 @@ function money(value) {
       </p>
     </section>
 
-    <section class="days wrap">
+    <section id="itinerary" class="days wrap">
       <div class="section-title">
         <div>
           <p class="eyebrow">12-DAY ITINERARY</p>
@@ -351,3 +367,15 @@ function money(value) {
     <p>資料來源為旅行社PDF整理 · 最終安排以旅行社現場通知為準</p>
   </footer>
 </template>
+
+<style>
+#itinerary {
+  scroll-margin-top: 96px;
+}
+
+@media (max-width: 760px) {
+  #itinerary {
+    scroll-margin-top: 82px;
+  }
+}
+</style>
