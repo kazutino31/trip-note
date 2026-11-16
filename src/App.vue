@@ -1,10 +1,31 @@
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
+import {
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogOverlay,
+  AlertDialogPortal,
+  AlertDialogRoot,
+  AlertDialogTitle,
+  DialogClose,
+  DialogContent,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle,
+  DialogTrigger,
+} from "reka-ui";
 import { days, weatherLinks } from "./data";
 
 const page = ref("trip");
 const openDay = ref(2);
 const menuOpen = ref(false);
+const expenseToDelete = ref(null);
+const pendingImport = ref(null);
+const importInput = ref(null);
+const importStatus = ref("");
 const rate = ref(Number(localStorage.getItem("trip-rate")) || 34.8);
 const budget = ref(Number(localStorage.getItem("trip-budget")) || 0);
 const expenses = ref(JSON.parse(localStorage.getItem("trip-expenses") || "[]"));
@@ -34,6 +55,7 @@ const form = ref({
   amount: "",
   payer: "共同",
 });
+const formErrors = ref({});
 const nav = [
   ["home", "首頁"],
   ["itinerary", "行程"],
@@ -89,7 +111,18 @@ async function goto(name) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function addExpense() {
-  if (!form.value.description || !Number(form.value.amount)) return;
+  const errors = {};
+  if (!form.value.description.trim()) errors.description = "請輸入支出項目";
+  if (form.value.amount === "" || form.value.amount === null) {
+    errors.amount = "請輸入金額";
+  } else if (!Number.isFinite(Number(form.value.amount)) || Number(form.value.amount) <= 0) {
+    errors.amount = "金額必須大於 0";
+  }
+  formErrors.value = errors;
+  if (Object.keys(errors).length) {
+    nextTick(() => document.querySelector(".field-error input")?.focus());
+    return;
+  }
   expenses.value.unshift({
     ...form.value,
     id: Date.now(),
@@ -97,9 +130,22 @@ function addExpense() {
   });
   form.value.description = "";
   form.value.amount = "";
+  formErrors.value = {};
+}
+
+function clearFormError(field) {
+  if (!formErrors.value[field]) return;
+  formErrors.value = { ...formErrors.value, [field]: undefined };
 }
 function removeExpense(id) {
   expenses.value = expenses.value.filter((e) => e.id !== id);
+  expenseToDelete.value = null;
+}
+
+function confirmRemoveExpense() {
+  const id = expenseToDelete.value?.id;
+  if (id === undefined || id === null) return;
+  removeExpense(id);
 }
 function addItem() {
   if (!newItem.value.trim()) return;
@@ -117,6 +163,88 @@ function money(value) {
     maximumFractionDigits: 0,
   }).format(value || 0);
 }
+
+function exportTripData() {
+  const backup = {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    app: "Trip Note AU-CZ-HU 2026",
+    data: {
+      rate: rate.value,
+      budget: budget.value,
+      expenses: expenses.value,
+      checklist: checklist.value,
+    },
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {
+    type: "application/json;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `trip-note-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+  importStatus.value = "備份檔已匯出，請妥善保存。";
+}
+
+async function prepareImport(event) {
+  importStatus.value = "";
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    const backup = JSON.parse(await file.text());
+    const data = backup?.data;
+    if (
+      backup?.schemaVersion !== 1 ||
+      !data ||
+      !Number.isFinite(Number(data.rate)) ||
+      !Number.isFinite(Number(data.budget)) ||
+      !Array.isArray(data.expenses) ||
+      !Array.isArray(data.checklist) ||
+      !data.expenses.every((item) =>
+        item && typeof item.description === "string" &&
+        Number.isFinite(Number(item.amount)) && Number(item.amount) >= 0
+      ) ||
+      !data.checklist.every((item) => item && typeof item.text === "string")
+    ) throw new Error("invalid-format");
+
+    pendingImport.value = {
+      rate: Number(data.rate),
+      budget: Number(data.budget),
+      expenses: data.expenses.map((item, index) => ({
+        id: item.id ?? Date.now() + index,
+        date: String(item.date || ""),
+        category: String(item.category || "其他"),
+        description: item.description,
+        currency: item.currency === "EUR" ? "EUR" : "TWD",
+        amount: Number(item.amount),
+        payer: String(item.payer || "共同"),
+      })),
+      checklist: data.checklist.map((item, index) => ({
+        id: item.id ?? Date.now() + index,
+        text: item.text,
+        done: Boolean(item.done),
+      })),
+      filename: file.name,
+    };
+  } catch {
+    importStatus.value = "無法匯入：這不是有效的 Trip Note 備份檔。";
+  } finally {
+    event.target.value = "";
+  }
+}
+
+function confirmImport() {
+  if (!pendingImport.value) return;
+  const backup = pendingImport.value;
+  rate.value = backup.rate;
+  budget.value = backup.budget;
+  expenses.value = backup.expenses;
+  checklist.value = backup.checklist;
+  pendingImport.value = null;
+  importStatus.value = "資料已成功匯入並儲存在這台裝置。";
+}
 </script>
 
 <template>
@@ -124,10 +252,7 @@ function money(value) {
     <button class="brand" @click="goto('home')">
       <span>Trip．Note</span><b>AU · CZ · HU</b>
     </button>
-    <button class="menu" @click="menuOpen = !menuOpen" aria-label="開啟選單">
-      {{ menuOpen ? "×" : "☰" }}
-    </button>
-    <nav :class="{ open: menuOpen }">
+    <nav class="desktop-nav">
       <button
         v-for="item in nav"
         :key="item[0]"
@@ -137,6 +262,26 @@ function money(value) {
         {{ item[1] }}
       </button>
     </nav>
+    <DialogRoot v-model:open="menuOpen">
+      <DialogTrigger class="mobile-menu-trigger" aria-label="開啟導覽選單">
+        <span></span><span></span>
+      </DialogTrigger>
+      <DialogPortal>
+        <DialogOverlay class="sheet-overlay" />
+        <DialogContent class="nav-sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-heading">
+            <div><small>TRIP NAVIGATION</small><DialogTitle>要去哪裡？</DialogTitle></div>
+            <DialogClose class="sheet-close" aria-label="關閉選單">×</DialogClose>
+          </div>
+          <div class="mobile-nav">
+            <button v-for="(item, index) in nav" :key="item[0]" @click="goto(item[0])">
+              <span>0{{ index + 1 }}</span><b>{{ item[1] }}</b><em>→</em>
+            </button>
+          </div>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
   </header>
 
   <main v-if="page === 'trip'">
@@ -247,6 +392,19 @@ function money(value) {
     <p class="eyebrow">TRAVEL WALLET</p>
     <h1>旅行預算</h1>
     <p class="lead">資料僅存在這台裝置的瀏覽器，不會上傳。</p>
+    <section class="data-tools" aria-labelledby="data-tools-title">
+      <div>
+        <small>LOCAL BACKUP</small>
+        <h2 id="data-tools-title">備份與移轉資料</h2>
+        <p>匯出後可傳到另一支手機，再於此處匯入(包含預算及清單)。</p>
+      </div>
+      <div class="data-actions">
+        <button @click="exportTripData">匯出備份</button>
+        <button class="secondary" @click="importInput?.click()">匯入備份</button>
+        <input ref="importInput" class="visually-hidden" type="file" accept="application/json,.json" @change="prepareImport" />
+      </div>
+      <p v-if="importStatus" class="import-status" :class="{ error: importStatus.startsWith('無法') }" role="status">{{ importStatus }}</p>
+    </section>
     <section class="summary">
       <label>總預算（TWD）<input type="number" v-model.number="budget" /></label
       ><label
@@ -260,26 +418,35 @@ function money(value) {
       </div>
       <div class="progress"><i :style="{ width: progress + '%' }"></i></div>
     </section>
-    <section class="expense-form card">
-      <input type="date" v-model="form.date" /><select v-model="form.category">
+    <section class="expense-form card" aria-labelledby="expense-form-title">
+      <h2 id="expense-form-title">新增支出</h2>
+      <label class="form-field"><span>日期</span><input type="date" v-model="form.date" /></label>
+      <label class="form-field"><span>分類</span><select v-model="form.category">
         <option
           v-for="c in ['機票', '交通', '餐飲', '購物', '門票', '其他']"
           :key="c"
         >
           {{ c }}
-        </option></select
-      ><input v-model="form.description" placeholder="項目說明" /><select
-        v-model="form.currency"
-      >
+        </option></select></label>
+      <label class="form-field description-field" :class="{ 'field-error': formErrors.description }">
+        <span>項目說明 <b>必填</b></span>
+        <input v-model="form.description" @input="clearFormError('description')" placeholder="例如：晚餐、車票" :aria-invalid="Boolean(formErrors.description)" aria-describedby="description-error" />
+        <small v-if="formErrors.description" id="description-error" role="alert">{{ formErrors.description }}</small>
+      </label>
+      <label class="form-field"><span>幣別</span><select v-model="form.currency">
         <option>EUR</option>
-        <option>TWD</option></select
-      ><input type="number" v-model="form.amount" placeholder="金額" /><select
-        v-model="form.payer"
-      >
+        <option>TWD</option></select></label>
+      <label class="form-field" :class="{ 'field-error': formErrors.amount }">
+        <span>金額 <b>必填</b></span>
+        <input type="number" min="0" step="0.01" inputmode="decimal" v-model="form.amount" @input="clearFormError('amount')" placeholder="0" :aria-invalid="Boolean(formErrors.amount)" aria-describedby="amount-error" />
+        <small v-if="formErrors.amount" id="amount-error" role="alert">{{ formErrors.amount }}</small>
+      </label>
+      <label class="form-field"><span>付款人</span><select v-model="form.payer">
         <option>共同</option>
         <option>旅伴 A</option>
-        <option>旅伴 B</option></select
-      ><button @click="addExpense">新增支出</button>
+        <option>旅伴 B</option></select></label>
+      <p v-if="Object.keys(formErrors).length" class="form-alert" role="alert">請完成上方必填欄位後再新增。</p>
+      <button class="submit-expense" @click="addExpense">新增支出</button>
     </section>
     <div class="expense-list">
       <div v-if="!expenses.length" class="empty">
@@ -295,9 +462,39 @@ function money(value) {
           }}<small>{{
             e.currency === "EUR" ? " ≈ " + money(e.amount * rate) : ""
           }}</small></span
-        ><button @click="removeExpense(e.id)" aria-label="刪除">×</button>
+        ><button @click="expenseToDelete = e" aria-label="刪除">×</button>
       </div>
     </div>
+    <AlertDialogRoot :open="Boolean(expenseToDelete)" @update:open="(open) => !open && (expenseToDelete = null)">
+      <AlertDialogPortal>
+        <AlertDialogOverlay class="sheet-overlay" />
+        <AlertDialogContent class="confirm-dialog">
+          <AlertDialogTitle>刪除這筆支出？</AlertDialogTitle>
+          <AlertDialogDescription>
+            「{{ expenseToDelete?.description }}」刪除後無法復原。
+          </AlertDialogDescription>
+          <div class="confirm-actions">
+            <AlertDialogCancel>保留</AlertDialogCancel>
+            <AlertDialogAction class="danger-button" @click.capture="confirmRemoveExpense">刪除</AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialogPortal>
+    </AlertDialogRoot>
+    <AlertDialogRoot :open="Boolean(pendingImport)" @update:open="(open) => !open && (pendingImport = null)">
+      <AlertDialogPortal>
+        <AlertDialogOverlay class="sheet-overlay" />
+        <AlertDialogContent class="confirm-dialog">
+          <AlertDialogTitle>匯入並覆蓋目前資料？</AlertDialogTitle>
+          <AlertDialogDescription>
+            將從「{{ pendingImport?.filename }}」匯入資料。目前的預算、支出與清單會被取代，建議先匯出一份備份。
+          </AlertDialogDescription>
+          <div class="confirm-actions">
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction @click.capture="confirmImport">確認匯入</AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialogPortal>
+    </AlertDialogRoot>
   </main>
 
   <main v-else-if="page === 'checklist'" class="tool-page wrap">
@@ -373,9 +570,126 @@ function money(value) {
   scroll-margin-top: 96px;
 }
 
+.mobile-menu-trigger {
+  display: none;
+}
+
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(42, 36, 31, 0.48);
+  backdrop-filter: blur(4px);
+  animation: fade-in 180ms ease-out;
+}
+
+.nav-sheet {
+  position: fixed;
+  z-index: 51;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: 88dvh;
+  padding: 10px 20px max(24px, env(safe-area-inset-bottom));
+  overflow: auto;
+  border-radius: 28px 28px 0 0;
+  background: var(--paper);
+  box-shadow: 0 -20px 60px rgba(54, 44, 35, 0.2);
+  animation: sheet-up 240ms cubic-bezier(.2,.8,.2,1);
+}
+
+.sheet-handle {
+  width: 42px;
+  height: 4px;
+  margin: 2px auto 20px;
+  border-radius: 99px;
+  background: var(--line);
+}
+
+.sheet-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.sheet-heading small { color: var(--brown); letter-spacing: .16em; }
+.sheet-heading h2 { margin: 2px 0 0; font: 600 30px 'Noto Serif TC'; }
+.sheet-close { width: 44px; height: 44px; border-radius: 50%; background: var(--cream); font-size: 24px; }
+.mobile-nav { display: grid; }
+.mobile-nav button { min-height: 64px; display: grid; grid-template-columns: 36px 1fr 30px; align-items: center; border-top: 1px solid var(--line); text-align: left; }
+.mobile-nav span { color: var(--brown); font-size: 11px; }
+.mobile-nav b { font: 600 21px 'Noto Serif TC'; }
+.mobile-nav em { color: #759195; font-style: normal; font-size: 20px; }
+
+.confirm-dialog {
+  position: fixed;
+  z-index: 52;
+  top: 50%;
+  left: 50%;
+  width: min(420px, calc(100% - 36px));
+  padding: 28px;
+  transform: translate(-50%, -50%);
+  border-radius: 22px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+.confirm-dialog h2 { margin: 0 0 8px; font: 600 25px 'Noto Serif TC'; }
+.confirm-dialog p { margin: 0; color: var(--brown); }
+.confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 24px; }
+.confirm-actions button { min-height: 48px; border-radius: 10px; background: var(--cream); }
+.confirm-actions .danger-button { background: #704a40; color: white; }
+
+.data-tools { display: grid; grid-template-columns: 1fr auto; gap: 16px 28px; margin-bottom: 28px; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255, 253, 248, .72); }
+.data-tools small { color: var(--brown); font-size: 10px; letter-spacing: .18em; }
+.data-tools h2 { margin: 2px 0 0; font: 600 21px 'Noto Serif TC'; }
+.data-tools p { margin: 3px 0 0; color: var(--brown); font-size: 13px; }
+.data-actions { display: flex; align-items: center; gap: 8px; }
+.data-actions button { min-height: 46px; padding: 0 16px; border-radius: 9px; background: var(--ink); color: white; }
+.data-actions .secondary { border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.data-tools .import-status { grid-column: 1 / -1; margin: 0; padding: 9px 12px; border-radius: 8px; background: #e7efeb; color: #526d65; }
+.data-tools .import-status.error { background: #f7e9e4; color: #833f35; }
+
+.expense-form > h2 {
+  grid-column: 1 / -1;
+  margin: 0 0 2px;
+  font: 600 20px 'Noto Serif TC';
+}
+.form-field { display: grid; align-content: start; gap: 5px; min-width: 0; }
+.form-field > span { font-size: 11px; color: var(--brown); }
+.form-field > span b { color: #946154; font-weight: 500; }
+.form-field input,
+.form-field select { width: 100%; min-height: 46px; }
+.form-field small { color: #9b493d; font-size: 12px; line-height: 1.35; }
+.field-error input { border-color: #a95345; outline: 2px solid rgba(169, 83, 69, .14); }
+.form-alert { grid-column: 1 / -1; margin: 0; padding: 10px 12px; border-radius: 8px; background: #f7e9e4; color: #833f35; font-size: 13px; }
+.submit-expense { align-self: end; min-height: 46px; }
+
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes sheet-up { from { transform: translateY(100%); } }
+
 @media (max-width: 760px) {
   #itinerary {
     scroll-margin-top: 82px;
   }
+  .desktop-nav { display: none; }
+  .mobile-menu-trigger {
+    display: grid;
+    width: 46px;
+    height: 46px;
+    place-content: center;
+    gap: 6px;
+    border-radius: 50%;
+    background: var(--paper);
+  }
+  .mobile-menu-trigger span { width: 20px; height: 1px; background: var(--ink); }
+  .expense-form { grid-template-columns: 1fr 1fr; }
+  .expense-form .description-field,
+  .expense-form .submit-expense { grid-column: 1 / -1; }
+  .expense-form .submit-expense { min-height: 52px; margin-top: 4px; }
+  .data-tools { grid-template-columns: 1fr; padding: 18px; }
+  .data-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .data-actions button { min-height: 52px; }
 }
 </style>
