@@ -27,6 +27,8 @@ const pendingImport = ref(null);
 const importInput = ref(null);
 const importStatus = ref("");
 const rate = ref(Number(localStorage.getItem("trip-rate")) || 34.8);
+const czkRate = ref(Number(localStorage.getItem("trip-czk-rate")) || 1.4);
+const hufRate = ref(Number(localStorage.getItem("trip-huf-rate")) || 0.09);
 const budget = ref(Number(localStorage.getItem("trip-budget")) || 0);
 const expenses = ref(JSON.parse(localStorage.getItem("trip-expenses") || "[]"));
 const checklist = ref(
@@ -60,7 +62,8 @@ const nav = [
   ["home", "首頁"],
   ["itinerary", "行程"],
   ["budget", "預算"],
-  ["checklist", "清單"],
+  ["checklist", "待辦清單"],
+  ["memos", "行前備忘"],
   ["weather", "天氣"],
 ];
 
@@ -102,8 +105,10 @@ const travelMemos = [
   },
 ];
 
-watch([rate, budget], () => {
+watch([rate, czkRate, hufRate, budget], () => {
   localStorage.setItem("trip-rate", rate.value);
+  localStorage.setItem("trip-czk-rate", czkRate.value);
+  localStorage.setItem("trip-huf-rate", hufRate.value);
   localStorage.setItem("trip-budget", budget.value);
 });
 watch(
@@ -116,11 +121,18 @@ watch(
   (value) => localStorage.setItem("trip-checklist", JSON.stringify(value)),
   { deep: true },
 );
+function toTwd(amount, currency) {
+  const exchangeRates = {
+    EUR: rate.value,
+    CZK: czkRate.value,
+    HUF: hufRate.value,
+    TWD: 1,
+  };
+  return amount * (exchangeRates[currency] ?? 1);
+}
+
 const total = computed(() =>
-  expenses.value.reduce(
-    (sum, e) => sum + (e.currency === "EUR" ? e.amount * rate.value : e.amount),
-    0,
-  ),
+  expenses.value.reduce((sum, e) => sum + toTwd(e.amount, e.currency), 0),
 );
 const left = computed(() => budget.value - total.value);
 const progress = computed(() =>
@@ -209,6 +221,8 @@ function exportTripData() {
     app: "Trip Note AU-CZ-HU 2026",
     data: {
       rate: rate.value,
+      czkRate: czkRate.value,
+      hufRate: hufRate.value,
       budget: budget.value,
       expenses: expenses.value,
       checklist: checklist.value,
@@ -249,13 +263,17 @@ async function prepareImport(event) {
 
     pendingImport.value = {
       rate: Number(data.rate),
+      czkRate: Number(data.czkRate) || 1.4,
+      hufRate: Number(data.hufRate) || 0.09,
       budget: Number(data.budget),
       expenses: data.expenses.map((item, index) => ({
         id: item.id ?? Date.now() + index,
         date: String(item.date || ""),
         category: String(item.category || "其他"),
         description: item.description,
-        currency: item.currency === "EUR" ? "EUR" : "TWD",
+        currency: ["EUR", "CZK", "HUF", "TWD"].includes(item.currency)
+          ? item.currency
+          : "TWD",
         amount: Number(item.amount),
         payer: String(item.payer || "共同"),
       })),
@@ -277,6 +295,8 @@ function confirmImport() {
   if (!pendingImport.value) return;
   const backup = pendingImport.value;
   rate.value = backup.rate;
+  czkRate.value = backup.czkRate;
+  hufRate.value = backup.hufRate;
   budget.value = backup.budget;
   expenses.value = backup.expenses;
   checklist.value = backup.checklist;
@@ -447,6 +467,12 @@ function confirmImport() {
       <label>總預算（TWD）<input type="number" v-model.number="budget" /></label
       ><label
         >1 EUR = TWD<input type="number" step="0.1" v-model.number="rate"
+      /></label
+      ><label
+        >1 CZK（捷克克朗）= TWD<input type="number" step="0.01" v-model.number="czkRate"
+      /></label
+      ><label
+        >1 HUF（匈牙利福林）= TWD<input type="number" step="0.001" v-model.number="hufRate"
       /></label>
       <div>
         <span>已花費</span><b>{{ money(total) }}</b>
@@ -473,6 +499,8 @@ function confirmImport() {
       </label>
       <label class="form-field"><span>幣別</span><select v-model="form.currency">
         <option>EUR</option>
+        <option>CZK</option>
+        <option>HUF</option>
         <option>TWD</option></select></label>
       <label class="form-field" :class="{ 'field-error': formErrors.amount }">
         <span>金額 <b>必填</b></span>
@@ -498,7 +526,7 @@ function confirmImport() {
         <span
           >{{ e.currency }} {{ e.amount.toLocaleString()
           }}<small>{{
-            e.currency === "EUR" ? " ≈ " + money(e.amount * rate) : ""
+            e.currency !== "TWD" ? " ≈ " + money(toTwd(e.amount, e.currency)) : ""
           }}</small></span
         ><button @click="expenseToDelete = e" aria-label="刪除">×</button>
       </div>
@@ -563,22 +591,20 @@ function confirmImport() {
         </button></label
       >
     </section>
-    <section class="memo-section" aria-labelledby="travel-memo-title">
-      <div class="memo-heading">
-        <p class="eyebrow">TOUR LEADER NOTES</p>
-        <h2 id="travel-memo-title">領隊行前備忘</h2>
-        <p>集合、行李、住宿與付款注意事項，共 17 項。</p>
-      </div>
-      <div class="memo-grid">
-        <article v-for="group in travelMemos" :key="group.title" class="memo-card">
-          <h3>{{ group.title }}</h3>
-          <ol :start="group.start">
-            <li v-for="item in group.items" :key="item">{{ item }}</li>
-          </ol>
-        </article>
-      </div>
+  </main>
+
+  <main v-else-if="page === 'memos'" class="tool-page wrap">
+    <p class="eyebrow">TOUR LEADER NOTES</p>
+    <h1 id="travel-memo-title">行前備忘</h1>
+    <p class="lead">集合、行李、住宿與付款注意事項，共 17 項。</p>
+    <section class="memo-grid" aria-labelledby="travel-memo-title">
+      <article v-for="group in travelMemos" :key="group.title" class="memo-card">
+        <h2>{{ group.title }}</h2>
+        <ol :start="group.start">
+          <li v-for="item in group.items" :key="item">{{ item }}</li>
+        </ol>
+      </article>
     </section>
-    
   </main>
 
   <main v-else class="tool-page wrap">
