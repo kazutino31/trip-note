@@ -64,6 +64,44 @@ const nav = [
   ["weather", "天氣"],
 ];
 
+const travelMemos = [
+  {
+    title: "機場集合與行李",
+    start: 1,
+    items: [
+      "機場第一航廈華航集合時會發放：導覽耳機、轉接頭、10 GB 網卡。",
+      "到機場後先向領隊小龔報到。",
+      "護照自行攜帶，並提早半小時交給領隊小龔。",
+      "華航託運行李每人 23 kg × 2 件（兩件不能合計重量）；登機箱限重 7 kg。",
+      "可帶提袋裝衣服作為託運行李。",
+      "超過 100 cc 的液體須放入託運行李。",
+      "電池類與 3C 產品都要隨身攜帶。",
+    ],
+  },
+  {
+    title: "衣物與住宿",
+    start: 8,
+    items: [
+      "衣服可以帶準備淘汰的款式，方便旅途中汰換。",
+      "布拉格 12/1 約 0～6°C；要帶保暖衣物，不用帶短袖，建議洋蔥式穿法。",
+      "飯店備有牙膏、牙刷、拖鞋；部分飯店僅提供三合一清潔用品，可自備潤髮乳。",
+      "飯店櫃台可提供飲用水；使用電器時注意當地電壓為 220V。",
+      "記得帶常備藥與一轉多 USB 充電器；歐洲插座為雙圓孔。",
+    ],
+  },
+  {
+    title: "金錢、行程與其他",
+    start: 13,
+    items: [
+      "兌換歐元，建議準備 500 歐元作為緊急預備金；捷克與匈牙利可再換當地貨幣。",
+      "準備 2 張信用卡供退稅使用；JCB 不適用。",
+      "第 4 天前往老城區時，準備一日份換洗衣物。飯店位於市中心，大車無法進入，會安排小車接駁。",
+      "維也納可自費欣賞音樂會，票價約 70～100 歐元。",
+      "約每兩天在首都更換一次行李；飯店小費可給 1 歐元。",
+    ],
+  },
+];
+
 watch([rate, budget], () => {
   localStorage.setItem("trip-rate", rate.value);
   localStorage.setItem("trip-budget", budget.value);
@@ -525,13 +563,22 @@ function confirmImport() {
         </button></label
       >
     </section>
-    <aside class="tip">
-      <b>搭機提醒</b>
-      <p>
-        經濟艙託運 23 kg × 2 件；手提行李 7 kg × 1
-        件。行動電源與備用鋰電池必須隨身攜帶，航程中禁止使用與充電。
-      </p>
-    </aside>
+    <section class="memo-section" aria-labelledby="travel-memo-title">
+      <div class="memo-heading">
+        <p class="eyebrow">TOUR LEADER NOTES</p>
+        <h2 id="travel-memo-title">領隊行前備忘</h2>
+        <p>集合、行李、住宿與付款注意事項，共 17 項。</p>
+      </div>
+      <div class="memo-grid">
+        <article v-for="group in travelMemos" :key="group.title" class="memo-card">
+          <h3>{{ group.title }}</h3>
+          <ol :start="group.start">
+            <li v-for="item in group.items" :key="item">{{ item }}</li>
+          </ol>
+        </article>
+      </div>
+    </section>
+    
   </main>
 
   <main v-else class="tool-page wrap">
