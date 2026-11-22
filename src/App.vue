@@ -27,6 +27,13 @@ import {
   normalizeChecklist,
   normalizeBackup,
 } from "./dataValidation";
+import {
+  giftGuide,
+  shoppingRoute,
+  souvenirChecklistDefaults,
+  souvenirCountries,
+  topSouvenirs,
+} from "./souvenirs";
 
 const page = ref("trip");
 function localDate() {
@@ -96,6 +103,10 @@ const checklist = ref(
     normalizeChecklist,
   ),
 );
+const souvenirChecklist = ref(
+  JSON.parse(localStorage.getItem("trip-souvenir-checklist") || "null") ||
+    souvenirChecklistDefaults.map((text, i) => ({ id: i + 1, text, done: false })),
+);
 const newItem = ref("");
 const editingExpenseId = ref(null);
 const expenseQuery = ref("");
@@ -148,6 +159,7 @@ const nav = [
   ["budget", "預算"],
   ["checklist", "待辦清單"],
   ["memos", "行前備忘"],
+  ["souvenirs", "伴手禮"],
   ["weather", "天氣"],
 ];
 
@@ -202,6 +214,21 @@ watch(expenses, (value) => saveStored("trip-expenses", value), { deep: true });
 watch(checklist, (value) => saveStored("trip-checklist", value), {
   deep: true,
 });
+watch(
+  expenses,
+  (value) => localStorage.setItem("trip-expenses", JSON.stringify(value)),
+  { deep: true },
+);
+watch(
+  checklist,
+  (value) => localStorage.setItem("trip-checklist", JSON.stringify(value)),
+  { deep: true },
+);
+watch(
+  souvenirChecklist,
+  (value) => localStorage.setItem("trip-souvenir-checklist", JSON.stringify(value)),
+  { deep: true },
+);
 function toTwd(amount, currency) {
   const exchangeRates = {
     EUR: rate.value,
@@ -905,6 +932,46 @@ function confirmImport() {
     </section>
   </main>
 
+  <main v-else-if="page === 'souvenirs'" class="tool-page wrap souvenir-page">
+    <p class="eyebrow">SHOPPING FIELD GUIDE</p>
+    <h1>紀念品與伴手禮</h1>
+    <p class="lead">依國家、送禮對象與旅程順序整理；價格與庫存以現場為準。</p>
+
+    <section class="souvenir-spotlight" aria-labelledby="souvenir-top-title">
+      <div><small>TOP PICKS</small><h2 id="souvenir-top-title">最值得優先買</h2><p>好攜帶、有在地特色，也適合分享的 10 項首選。</p></div>
+      <ol><li v-for="item in topSouvenirs" :key="item">{{ item }}</li></ol>
+    </section>
+
+    <section class="souvenir-section" aria-labelledby="country-shopping-title">
+      <div class="section-title compact"><div><p class="eyebrow">BY COUNTRY</p><h2 id="country-shopping-title">三國採買指南</h2></div></div>
+      <article v-for="country in souvenirCountries" :key="country.code" class="country-shop">
+        <header><span>{{ country.code }}</span><div><h3>{{ country.name }}</h3><p>{{ country.note }}</p></div></header>
+        <div class="shop-grid">
+          <div v-for="item in country.items" :key="item[1]" class="shop-item">
+            <div class="rating" :aria-label="`${item[0]} 星推薦`">{{ '★'.repeat(item[0]) }}<i>{{ '★'.repeat(5 - item[0]) }}</i></div>
+            <h4>{{ item[1] }}</h4><p>{{ item[2] }}</p>
+            <dl><div><dt>哪裡買</dt><dd>{{ item[3] }}</dd></div><div><dt>攜帶提醒</dt><dd>{{ item[4] }}</dd></div></dl>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="souvenir-split">
+      <article class="guide-card"><p class="eyebrow">WHO IS IT FOR?</p><h2>依送禮對象挑選</h2><div v-for="row in giftGuide" :key="row[0]" class="guide-row"><b>{{ row[0] }}</b><span>{{ row[1] }}</span></div></article>
+      <article class="guide-card"><p class="eyebrow">SHOP ALONG THE WAY</p><h2>跟著路線買</h2><div v-for="row in shoppingRoute" :key="row[0]" class="guide-row"><b>{{ row[0] }}</b><span>{{ row[1] }}</span></div></article>
+    </section>
+
+    <section class="souvenir-checklist card" aria-labelledby="souvenir-list-title">
+      <div><p class="eyebrow">PACK & CHECK</p><h2 id="souvenir-list-title">採買清單</h2><p>勾選狀態會保留在這台裝置。</p></div>
+      <div class="souvenir-check-grid"><label v-for="item in souvenirChecklist" :key="item.id" :class="{ done: item.done }"><input v-model="item.done" type="checkbox" /><span>{{ item.text }}</span></label></div>
+    </section>
+
+    <aside class="shopping-alert">
+      <h2>購買與入境提醒</h2>
+      <ul><li>29 吋空箱約 6.1 kg；託運上限若為 23 kg，箱重也要計入。</li><li>巧克力避免高溫與擠壓；堅果、乳製品與麩質過敏者留意標示。</li><li>玻璃、陶瓷與果醬罐妥善防撞；大容量乳霜、油品與液體放託運。</li><li>肉製品、動植物及部分食品有檢疫限制，返台前以主管機關最新公告為準。</li><li>觀光區價格可能偏高；玻璃、石榴石與手工藝品優先選來源清楚的店家。</li></ul>
+    </aside>
+  </main>
+
   <main v-else class="tool-page wrap">
     <p class="eyebrow">WEATHER WATCH</p>
     <h1>冬季天氣</h1>
@@ -1222,4 +1289,5 @@ function confirmImport() {
     min-height: 52px;
   }
 }
+.souvenir-page{width:min(1180px,calc(100% - 36px))}.souvenir-spotlight{display:grid;grid-template-columns:.7fr 1.3fr;gap:40px;padding:36px;margin:30px 0 80px;border-radius:24px;background:var(--ink);color:#fff}.souvenir-spotlight small{letter-spacing:.18em;color:#d8c9b1}.souvenir-spotlight h2,.souvenir-section h2,.guide-card h2,.souvenir-checklist h2,.shopping-alert h2{font:600 28px 'Noto Serif TC';margin:6px 0}.souvenir-spotlight p{color:#ded7ce}.souvenir-spotlight ol{display:grid;grid-template-columns:1fr 1fr;gap:0 36px;margin:0;padding-left:1.5em}.souvenir-spotlight li{padding:9px 0;border-bottom:1px solid rgba(255,255,255,.14)}.section-title.compact{margin-bottom:18px}.country-shop{margin-bottom:48px}.country-shop>header{display:grid;grid-template-columns:82px 1fr;gap:22px;align-items:start;margin-bottom:18px}.country-shop>header>span{font:700 48px 'Noto Serif TC';color:var(--oat)}.country-shop h3{font:600 30px 'Noto Serif TC';margin:0}.country-shop header p{max-width:800px;margin:4px 0;color:var(--brown)}.shop-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.shop-item{padding:22px;border:1px solid var(--line);border-radius:16px;background:rgba(255,253,248,.7)}.rating{font-size:12px;letter-spacing:.08em;color:#9d7451}.rating i{color:#d9cfc1;font-style:normal}.shop-item h4{font:600 19px 'Noto Serif TC';margin:8px 0 4px}.shop-item>p{margin:0 0 14px}.shop-item dl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0;padding-top:12px;border-top:1px solid var(--line)}.shop-item dt{font-size:11px;letter-spacing:.1em;color:var(--brown)}.shop-item dd{margin:2px 0;font-size:13px;line-height:1.55}.souvenir-split{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:70px 0}.guide-card{padding:28px;border-radius:20px;background:var(--paper);box-shadow:0 8px 22px rgba(80,65,48,.06)}.guide-row{display:grid;grid-template-columns:minmax(130px,.8fr) 1.2fr;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}.guide-row:last-child{border:0}.guide-row b,.guide-row span{font-size:14px}.guide-row span{color:var(--brown)}.souvenir-checklist{display:grid;grid-template-columns:.6fr 1.4fr;gap:30px;padding:30px;margin-bottom:24px}.souvenir-checklist p{margin-bottom:0}.souvenir-check-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.souvenir-check-grid label{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:9px;background:var(--cream)}.souvenir-check-grid input{margin-top:6px;accent-color:#78979b}.souvenir-check-grid label.done span{text-decoration:line-through;opacity:.5}.shopping-alert{padding:28px;margin-top:24px;border-left:4px solid #9b6b58;background:#eee3d8}.shopping-alert ul{margin-bottom:0;padding-left:1.3em}.shopping-alert li{margin:7px 0}@media(max-width:760px){.souvenir-spotlight,.souvenir-checklist{grid-template-columns:1fr;padding:24px}.souvenir-spotlight ol,.shop-grid,.souvenir-split,.souvenir-check-grid{grid-template-columns:1fr}.country-shop>header{grid-template-columns:55px 1fr;gap:12px}.country-shop>header>span{font-size:36px}.shop-item dl{grid-template-columns:1fr}.guide-row{grid-template-columns:1fr;gap:3px}.souvenir-split{margin:48px 0}.souvenir-spotlight{margin-bottom:55px}}
 </style>
