@@ -1,4 +1,9 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600&family=Noto+Serif+TC:wght@500;600;700&display=swap");
+@font-face {
+  font-family: "Noto Serif TC";
+  src: local("Songti TC"), local("PMingLiU"), local("serif");
+  font-display: swap;
+}
+
 .quick-actions,
 .day-controls,
 .filter-actions {
@@ -112,7 +117,7 @@ body {
   margin: 0;
   background: var(--cream);
   color: var(--ink);
-  font-family: "Noto Sans TC", sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
   line-height: 1.75;
 }
 button,
@@ -150,7 +155,7 @@ button {
   gap: 12px;
 }
 .brand span {
-  font-family: "Noto Serif TC";
+  font-family: "Songti TC", "PMingLiU", serif;
   font-size: 20px;
 }
 .brand b {
@@ -263,7 +268,7 @@ nav button:hover {
   place-content: center;
   text-align: center;
   transform: rotate(8deg);
-  font-family: "Noto Serif TC";
+  font-family: "Songti TC", "PMingLiU", serif;
 }
 .stamp b {
   font-size: 12px;
@@ -296,7 +301,7 @@ nav button:hover {
   margin-bottom: 6px;
 }
 .facts b {
-  font-family: "Noto Serif TC";
+  font-family: "Songti TC", "PMingLiU", serif;
   font-weight: 600;
 }
 .intro {

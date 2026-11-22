@@ -1,0 +1,12 @@
+{
+  "name": "奧捷匈 12 日旅行手帳",
+  "short_name": "奧捷匈旅行",
+  "description": "2026 奧捷匈 12 日旅行行程、預算、清單與伴手禮指南。",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f0e6",
+  "theme_color": "#f4efe5",
+  "icons": [{ "src": "./trip-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

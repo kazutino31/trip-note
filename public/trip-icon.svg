@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#f5f0e6"/>
+  <circle cx="365" cy="145" r="76" fill="#ded0b8"/>
+  <path d="M0 356 146 204l79 82 70-73 217 220v79H0Z" fill="#a9c3c9"/>
+  <path d="M0 422 169 285l95 79 81-67 167 137v78H0Z" fill="#6f8988"/>
+  <text x="256" y="170" text-anchor="middle" fill="#463e36" font-family="system-ui,sans-serif" font-size="72" font-weight="700">AU</text>
+  <text x="256" y="242" text-anchor="middle" fill="#463e36" font-family="system-ui,sans-serif" font-size="52" font-weight="600">CZ · HU</text>
+</svg>
