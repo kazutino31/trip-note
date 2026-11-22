@@ -1209,6 +1209,8 @@ function confirmImport() {
 .form-field input,
 .form-field select {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 46px;
 }
 .form-field small {
@@ -1267,7 +1269,7 @@ function confirmImport() {
     background: var(--ink);
   }
   .expense-form {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .expense-form .description-field,
   .expense-form .submit-expense {

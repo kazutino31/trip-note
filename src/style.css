@@ -708,7 +708,7 @@ footer p {
     grid-template-columns: 1fr 1fr;
   }
   .expense-form {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .expense-form input:nth-of-type(2),
   .expense-form button {
