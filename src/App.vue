@@ -1213,6 +1213,15 @@ function confirmImport() {
   max-width: 100%;
   min-height: 46px;
 }
+.form-field input[type="date"] {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow: hidden;
+  -webkit-appearance: none;
+  appearance: none;
+}
 .form-field small {
   color: #9b493d;
   font-size: 12px;
@@ -1270,6 +1279,12 @@ function confirmImport() {
   }
   .expense-form {
     grid-template-columns: minmax(0, 1fr);
+    overflow: hidden;
+  }
+  .expense-form .form-field {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
   }
   .expense-form .description-field,
   .expense-form .submit-expense {
