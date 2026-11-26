@@ -20,6 +20,7 @@ import {
 import { days, weatherLinks } from "./data";
 import {
   validRate,
+  referenceRates,
   validBudget,
   normalizeRate,
   normalizeBudget,
@@ -78,9 +79,45 @@ const expenseToDelete = ref(null);
 const pendingImport = ref(null);
 const importInput = ref(null);
 const importStatus = ref("");
-const rate = ref(readStored("trip-rate", 34.8, normalizeRate));
-const czkRate = ref(readStored("trip-czk-rate", 1.4, normalizeRate));
-const hufRate = ref(readStored("trip-huf-rate", 0.09, normalizeRate));
+const rate = ref(readStored("trip-rate", referenceRates.EUR, normalizeRate));
+const czkRate = ref(readStored("trip-czk-rate", referenceRates.CZK, normalizeRate));
+const hufRate = ref(readStored("trip-huf-rate", referenceRates.HUF, normalizeRate));
+
+const updatingRates = ref(false);
+const rateUpdateMessage = ref("");
+
+async function updateOnlineRates() {
+  if (updatingRates.value) return;
+  updatingRates.value = true;
+  rateUpdateMessage.value = "";
+  try {
+    const response = await fetch(
+      "https://api.frankfurter.dev/v2/rates?base=TWD&quotes=EUR,CZK,HUF",
+      { cache: "no-store", signal: AbortSignal.timeout(10000) },
+    );
+    if (!response.ok) throw new Error("Exchange rate request failed");
+    const rows = await response.json();
+    const latest = ["EUR", "CZK", "HUF"].map((currency) => {
+      const row = rows.find(({ base, quote }) => base === "TWD" && quote === currency);
+      if (!validRate(row?.rate) || !/^\d{4}-\d{2}-\d{2}$/.test(row.date)) {
+        throw new Error("Missing exchange rate");
+      }
+      return { currency, date: row.date, rate: 1 / row.rate };
+    });
+    [rate.value, czkRate.value, hufRate.value] = latest.map((row) =>
+      Number(row.rate.toPrecision(6)),
+    );
+    const dates = new Set(latest.map((row) => row.date));
+    const dateLabel = dates.size === 1
+      ? latest[0].date
+      : latest.map(({ currency, date }) => `${currency} ${date}`).join("、");
+    rateUpdateMessage.value = `已套用 Frankfurter 參考匯率（${dateLabel}）。`;
+  } catch {
+    rateUpdateMessage.value = "無法取得線上匯率，已保留目前設定。請稍後再試。";
+  } finally {
+    updatingRates.value = false;
+  }
+}
 const budget = ref(readStored("trip-budget", 0, normalizeBudget));
 const expenses = ref(readStored("trip-expenses", [], normalizeExpenses));
 const checklist = ref(
@@ -168,12 +205,12 @@ const travelMemos = [
     title: "機場集合與行李",
     start: 1,
     items: [
-      "機場第一航廈華航集合時會發放：導覽耳機、轉接頭、10 GB 網卡。",
+      "在第一航廈華航集合時領取導覽耳機、轉接頭和 10 GB 網卡。",
       "到機場後先向領隊小龔報到。",
       "護照自行攜帶，並提早半小時交給領隊小龔。",
-      "華航託運行李每人 23 kg × 2 件（兩件不能合計重量）；登機箱限重 7 kg。",
+      "華航每人可託運 2 件，每件限 23 kg，重量不可合計。登機箱限 7 kg。",
       "可帶提袋裝衣服作為託運行李。",
-      "超過 100 cc 的液體須放入託運行李。",
+      "單瓶不超過 100 cc (總共不大於1公升)的液體須放入託運行李。",
       "電池類與 3C 產品都要隨身攜帶。",
     ],
   },
@@ -181,10 +218,10 @@ const travelMemos = [
     title: "衣物與住宿",
     start: 8,
     items: [
-      "衣服可以帶準備淘汰的款式，方便旅途中汰換。",
+      "可帶準備淘汰的衣服，方便途中汰換。",
       "布拉格 12/1 約 0～6°C；要帶保暖衣物，不用帶短袖，建議洋蔥式穿法。",
       "飯店備有牙膏、牙刷、拖鞋；部分飯店僅提供三合一清潔用品，可自備潤髮乳。",
-      "飯店櫃台可提供飲用水；使用電器時注意當地電壓為 220V。",
+      "飯店櫃台可提供飲用水 (可能需要收費)；使用電器時注意當地電壓為 220V。",
       "記得帶常備藥與一轉多 USB 充電器；歐洲插座為雙圓孔。",
     ],
   },
@@ -192,9 +229,9 @@ const travelMemos = [
     title: "金錢、行程與其他",
     start: 13,
     items: [
-      "兌換歐元，建議準備 500 歐元作為緊急預備金；捷克與匈牙利可再換當地貨幣。",
+      "兌換歐元，建議準備 500 歐元作為緊急預備金(實際多少依個人需求)；捷克與匈牙利可再換當地貨幣。",
       "準備 2 張信用卡供退稅使用；JCB 不適用。",
-      "第 4 天前往老城區時，準備一日份換洗衣物。飯店位於市中心，大車無法進入，會安排小車接駁。",
+      "第 4 天去老城區前，準備一天的換洗衣物。市中心飯店無法搭大車直達，會安排小車接駁。",
       "維也納可自費欣賞音樂會，票價約 70～100 歐元。",
       "約每兩天在首都更換一次行李；飯店小費可給 1 歐元。",
     ],
@@ -497,14 +534,14 @@ function confirmImport() {
 
     <div class="quick-actions wrap" aria-label="常用功能">
       <button @click="goto('itinerary')">查看行程 ↓</button>
-      <button @click="goto('budget')">記一筆支出＋</button>
-      <button @click="goto('checklist')">行李與待辦＊</button>
+      <button @click="goto('budget')">記一筆支出</button>
+      <button @click="goto('checklist')">行李與待辦</button>
     </div>
     <section class="wrap intro">
       <p class="eyebrow">THE JOURNEY</p>
       <h2>一段從波希米亞走到多瑙河的冬日旅行</h2>
       <p>
-        所有行程、餐食、住宿與車程均依旅行社PDF整理。未提供的集合時間、餐廳名稱與營業資訊保留為待確認，不以推測補齊。
+        行程、餐食、住宿與車程依旅行社資料整理。未提供的集合時間、餐廳名稱與營業資訊待確認。
       </p>
     </section>
 
@@ -563,6 +600,10 @@ function confirmImport() {
           <div class="country">{{ d.country }}</div>
         </div>
         <p class="day-intro">{{ d.intro }}</p>
+        <div v-if="d.weather" class="notice">
+          <p><strong>預估氣溫與天候</strong><br />{{ d.weather.outlook }}</p>
+          <p><strong>穿著與提醒</strong><br />{{ d.weather.clothing }}</p>
+        </div>
         <div class="timeline">
           <div v-for="(spot, i) in d.spots" :key="spot.name" class="stop">
             <div class="dot">{{ i + 1 }}</div>
@@ -623,12 +664,10 @@ function confirmImport() {
     <p class="eyebrow">TRAVEL WALLET</p>
     <h1>旅行預算</h1>
     <p class="lead">資料僅存在這台裝置的瀏覽器，不會上傳。</p>
-    <section class="data-tools" aria-labelledby="data-tools-title">
-      <div>
-        <small>LOCAL BACKUP</small>
-        <h2 id="data-tools-title">備份與移轉資料</h2>
-        <p>匯出後可傳到另一支手機，再於此處匯入(包含預算及清單)。</p>
-      </div>
+    <details class="data-tools">
+      <summary>備份與移轉資料</summary>
+      <div class="backup-content">
+        <p>匯出後可傳到另一支手機，再於此處匯入（包含預算及清單）。</p>
       <div class="data-actions">
         <button @click="exportTripData">匯出備份</button>
         <button class="secondary" @click="importInput?.click()">
@@ -650,7 +689,8 @@ function confirmImport() {
       >
         {{ importStatus }}
       </p>
-    </section>
+      </div>
+    </details>
     <section class="summary">
       <label
         >總預算（TWD）<input
@@ -661,21 +701,33 @@ function confirmImport() {
         >1 EUR = TWD<input
           type="number"
           min="0.1"
-          step="0.1"
+          step="any"
           v-model.number="rate" /></label
       ><label
         >1 CZK（捷克克朗）= TWD<input
           type="number"
           min="0.01"
-          step="0.01"
+          step="any"
           v-model.number="czkRate" /></label
       ><label
         >1 HUF（匈牙利福林）= TWD<input
           type="number"
           min="0.001"
-          step="0.001"
+          step="any"
           v-model.number="hufRate"
       /></label>
+      
+      <!-- <div class="data-actions rate-actions">
+        <p class="helper-text" role="status">{{ rateUpdateMessage }}</p>
+        <button type="button" class="secondary" :disabled="updatingRates" @click="updateOnlineRates">
+          {{ updatingRates ? "正在查詢匯率…" : "取得並套用最新匯率(參考用)" }}
+        </button>
+      </div> -->
+     
+      <p class="helper-text rate-source">
+        可另查<a href="https://rate.bot.com.tw/xrt?Lang=zh-TW" target="_blank" rel="noopener noreferrer">臺銀現金與即期牌告</a>。
+        買賣匯率與手續費以交易時為準。
+      </p>
       <div>
         <span>已花費</span><b>{{ money(total) }}</b>
       </div>
@@ -975,7 +1027,7 @@ function confirmImport() {
   <main v-else class="tool-page wrap">
     <p class="eyebrow">WEATHER WATCH</p>
     <h1>冬季天氣</h1>
-    <p class="lead">請於出發前三天查看最新氣溫、降雪、風速與警報。</p>
+    <p class="lead">查看最新氣溫、降雪、風速與警報。</p>
     <section class="weather-grid">
       <a
         v-for="w in weatherLinks"
@@ -987,17 +1039,11 @@ function confirmImport() {
         ><em>查看 Meteoblue ↗</em></a
       >
     </section>
-    <aside class="tip">
-      <b>12 月旅行提醒</b>
-      <p>
-        山區與湖區路面可能積雪或結冰；遊船也可能因天候停航。穿防滑鞋、採洋蔥式穿搭，並依領隊當日通知調整。
-      </p>
-    </aside>
   </main>
 
   <footer>
     <span>AUSTRIA · CZECHIA · HUNGARY</span>
-    <p>資料來源為旅行社PDF整理 · 最終安排以旅行社現場通知為準</p>
+    <p>本站為個人旅行備忘筆記，依旅行社提供的行程資料與領隊提醒等自行查詢相關資料整理。現地相關行程安排以領隊最新通知為準。</p>
   </footer>
 </template>
 
@@ -1125,23 +1171,22 @@ function confirmImport() {
 }
 
 .data-tools {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 16px 28px;
   margin-bottom: 28px;
   padding: 22px;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: rgba(255, 253, 248, 0.72);
 }
-.data-tools small {
-  color: var(--brown);
-  font-size: 10px;
-  letter-spacing: 0.18em;
-}
-.data-tools h2 {
-  margin: 2px 0 0;
+.data-tools > summary {
+  cursor: pointer;
   font: 600 21px "Noto Serif TC";
+}
+.backup-content {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 16px 28px;
+  margin-top: 14px;
 }
 .data-tools p {
   margin: 3px 0 0;
@@ -1164,6 +1209,28 @@ function confirmImport() {
   border: 1px solid var(--line);
   background: var(--paper);
   color: var(--ink);
+}
+.summary > .rate-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0;
+  background: transparent;
+}
+.rate-actions p {
+  margin: 0;
+}
+.rate-actions p:empty {
+  display: none;
+}
+.summary > .rate-source {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+.rate-source a {
+  text-decoration: underline;
 }
 .visually-hidden {
   position: absolute;
@@ -1295,8 +1362,11 @@ function confirmImport() {
     margin-top: 4px;
   }
   .data-tools {
-    grid-template-columns: 1fr;
     padding: 18px;
+  }
+  .backup-content,
+  .summary > .rate-actions {
+    grid-template-columns: 1fr;
   }
   .data-actions {
     display: grid;

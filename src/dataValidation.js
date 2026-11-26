@@ -1,5 +1,8 @@
 const currencies = ["EUR", "CZK", "HUF", "TWD"];
 
+// 臺銀 2026/11/26 即期賣出，CZK 與 HUF 依 ECB 2026/11/25 參考匯率換算。
+export const referenceRates = { EUR: 36.465, CZK: 1.4923, HUF: 0.09765 };
+
 export const validRate = (value) =>
   typeof value === "number" && Number.isFinite(value) && value > 0;
 export const validBudget = (value) =>
@@ -78,8 +81,8 @@ export function normalizeBackup(backup) {
   if (backup?.schemaVersion !== 1 || !data) throw new Error("invalid-format");
   return {
     rate: normalizeRate(data.rate),
-    czkRate: data.czkRate === undefined ? 1.4 : normalizeRate(data.czkRate),
-    hufRate: data.hufRate === undefined ? 0.09 : normalizeRate(data.hufRate),
+    czkRate: data.czkRate === undefined ? referenceRates.CZK : normalizeRate(data.czkRate),
+    hufRate: data.hufRate === undefined ? referenceRates.HUF : normalizeRate(data.hufRate),
     budget: normalizeBudget(data.budget),
     expenses: normalizeExpenses(data.expenses),
     checklist: normalizeChecklist(data.checklist),

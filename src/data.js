@@ -27,6 +27,10 @@ export const days = [
   {
     day: 1,
     date: "12/01",
+    weather: {
+      outlook: "台北約 18～23°C",
+      clothing: "搭機時採洋蔥式穿搭，厚外套放在隨身行李，隔日清晨抵達布拉格時即可穿上。",
+    },
     weekday: "二",
     country: "CZ",
     city: "台北 → 布拉格",
@@ -47,12 +51,16 @@ export const days = [
   {
     day: 2,
     date: "12/02",
+    weather: {
+      outlook: "-4～0°C，晴時多雲，體感乾冷",
+      clothing: "老城區與聖誕市集會在戶外停留較久，戴上毛帽、圍巾與手套。",
+    },
     weekday: "三",
     country: "CZ",
     city: "布拉格",
     stay: "HOTEL JALTA ★★★★★｜Václavské náměstí 45/818, Praha 1",
     meals: ["早餐：機上", "午餐：伏爾塔瓦河遊船午宴", "晚餐：義式風味料理"],
-    intro: "抵達後走訪布拉格老城，搭乘伏爾塔瓦河遊船，傍晚感受聖誕市集。",
+    intro: "抵達後逛布拉格老城、搭伏爾塔瓦河遊船，傍晚逛聖誕市集。",
     spots: [
       {
         name: "布拉格老城廣場",
@@ -74,6 +82,10 @@ export const days = [
   {
     day: 3,
     date: "12/03",
+    weather: {
+      outlook: "1～5°C，多雲時晴",
+      clothing: "皇宮區與查理大橋多石板路，穿保暖防滑鞋。下午自由活動時留意傍晚降溫。",
+    },
     weekday: "四",
     country: "CZ",
     city: "布拉格",
@@ -101,11 +113,15 @@ export const days = [
         place: "Prague Czechia",
       },
     ],
-    note: "PDF 未指定米其林餐廳名稱，待旅行社確認。",
+    note: "米其林推薦餐廳名稱待旅行社確認。",
   },
   {
     day: 4,
     date: "12/04",
+    weather: {
+      outlook: "-4～2°C，局部多雲，雨雪機率低",
+      clothing: "南波西米亞山谷清晨與夜晚可能低於冰點，步行遊覽克魯諾夫時穿保暖內層和厚外套。",
+    },
     weekday: "五",
     country: "CZ",
     city: "布拉格 → 克魯諾夫",
@@ -129,6 +145,10 @@ export const days = [
   {
     day: 5,
     date: "12/05",
+    weather: {
+      outlook: "1～5°C，陰天，可能有雨夾雪或降雨",
+      clothing: "鹽礦內偏涼，需換穿工作服。遊覽莎姿堡市區時，穿防潑水保暖外套並帶摺疊傘。",
+    },
     weekday: "六",
     country: "AT",
     city: "克魯諾夫 → 薩爾茲堡",
@@ -138,7 +158,7 @@ export const days = [
       "午餐：德式豬腳料理佐啤酒一杯",
       "晚餐：中式料理七菜一湯",
     ],
-    intro: "探訪古老鹽礦，午後走入音樂之都薩爾茲堡。",
+    intro: "參觀古老鹽礦，午後遊覽薩爾茲堡。",
     spots: [
       {
         name: "鹽礦探秘之旅",
@@ -160,6 +180,10 @@ export const days = [
   {
     day: 6,
     date: "12/06",
+    weather: {
+      outlook: "-5～1°C，湖區與山區上午可能有陣雪",
+      clothing: "聖沃夫岡湖與哈斯達特風感明顯，路面可能濕滑或結霜。穿防滑鞋，並加強頭頸保暖。",
+    },
     weekday: "日",
     country: "AT",
     city: "薩爾茲堡 → 哈斯達特 → 格拉茲",
@@ -184,6 +208,10 @@ export const days = [
   {
     day: 7,
     date: "12/07",
+    weather: {
+      outlook: "布達佩斯 -3～1°C，晴朗乾冷",
+      clothing: "車程較長，車上有暖氣，適合分層穿搭。抵達後先穿好厚外套再下車。",
+    },
     weekday: "一",
     country: "HU",
     city: "格拉茲 → 布達佩斯",
@@ -207,12 +235,16 @@ export const days = [
   {
     day: 8,
     date: "12/08",
+    weather: {
+      outlook: "-3～1°C，午後多雲，微風偏冷",
+      clothing: "晚間搭乘多瑙河遊船時，河面風大，隨身帶暖暖包、圍巾與手套。",
+    },
     weekday: "二",
     country: "HU",
     city: "布達佩斯",
     stay: "同前一晚或同級",
     meals: ["早餐：飯店內", "午餐：匈牙利燉牛肉", "晚餐：多瑙河遊船晚宴"],
-    intro: "完整探索布達與佩斯兩岸，夜晚於多瑙河上用餐賞景。",
+    intro: "白天遊覽布達與佩斯兩岸，晚間搭多瑙河遊船用餐、看夜景。",
     spots: [
       {
         name: "布達皇宮區",
@@ -239,6 +271,10 @@ export const days = [
   {
     day: 9,
     date: "12/09",
+    weather: {
+      outlook: "維也納 -6～1°C，陰天，晚間可能飄雪",
+      clothing: "潘朵芙購物村有半戶外動線，逛街時穿保暖內層與厚外套。抵達維也納後留意入夜降溫。",
+    },
     weekday: "三",
     country: "AT",
     city: "布達佩斯 → 潘朵芙 → 維也納",
@@ -248,7 +284,7 @@ export const days = [
       "午餐：中式料理七菜一湯",
       "晚餐：方便逛街，敬請自理",
     ],
-    intro: "上午參觀布達佩斯地標，午後於潘朵芙購物村停留，再前往維也納。",
+    intro: "上午看布達佩斯地標，午後逛潘朵芙購物村，再前往維也納。",
     spots: [
       {
         name: "英雄廣場",
@@ -271,6 +307,10 @@ export const days = [
   {
     day: 10,
     date: "12/10",
+    weather: {
+      outlook: "-6～0°C，陰天偶有小雪",
+      clothing: "內搭發熱衣褲，外穿羽絨外套。步行時留意路面濕滑，穿防滑鞋。",
+    },
     weekday: "四",
     country: "AT",
     city: "維也納",
@@ -299,6 +339,10 @@ export const days = [
   {
     day: 11,
     date: "12/11",
+    weather: {
+      outlook: "維也納 -5～1°C",
+      clothing: "清晨前往機場退稅及登機時穿著厚外套，並隨身攜帶上機。",
+    },
     weekday: "五",
     country: "AT",
     city: "維也納 → 台北",
@@ -317,12 +361,16 @@ export const days = [
   {
     day: 12,
     date: "12/12",
+    weather: {
+      outlook: "桃園約 17～22°C",
+      clothing: "清晨抵達桃園後，可依體感減少厚重衣物。",
+    },
     weekday: "六",
     country: "TW",
     city: "台北",
     stay: "溫暖的家",
     meals: ["早餐：機上", "午餐：—", "晚餐：—"],
-    intro: "05:35 抵達桃園國際機場，旅程平安落幕。",
+    intro: "05:35 抵達桃園國際機場。",
     spots: [
       {
         time: "05:35",

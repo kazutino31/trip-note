@@ -461,8 +461,9 @@ nav button:hover {
 .notice,
 .tip {
   background: #e9efed;
-  border-left: 3px solid #7c999a;
-  padding: 16px 20px;
+  border-left: 3px solid #7c999a;  
+  padding: 8px 20px ;
+  margin-bottom: 16px;
 }
 .tool-page {
   min-height: 75vh;
